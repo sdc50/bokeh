@@ -135,7 +135,6 @@ __all__ = (
     'PolyDrawTool',
     'PolyEditTool',
     'PolySelectTool',
-    'ProxyToolbar',
     'RangeTool',
     'RedoTool',
     'ResetTool',
@@ -144,8 +143,8 @@ __all__ = (
     'Tap',
     'TapTool',
     'Tool',
+    'ToolProxy',
     'Toolbar',
-    'ToolbarBase',
     'ToolbarBox',
     'UndoTool',
     'WheelPanTool',
@@ -197,6 +196,12 @@ class Tool(Model):
     @classmethod
     def register_alias(cls, name: str, constructor: tp.Callable[[], Tool]) -> None:
         cls._known_aliases[name] = constructor
+
+class ToolProxy(Model):
+
+    tools = List(Instance(Tool))
+    active = Bool(default=False)
+    disabled = Bool(default=False)
 
 @abstract
 class ActionTool(Tool):
@@ -261,9 +266,8 @@ class InspectTool(GestureTool):
     toggle the inspector on or off using the toolbar.
     """)
 
-@abstract
-class ToolbarBase(Model):
-    ''' A base class for different toolbars.
+class Toolbar(Model):
+    ''' Collect tools to display for a single plot.
 
     '''
 
@@ -277,14 +281,9 @@ class ToolbarBase(Model):
     If True, hides toolbar when cursor is not in canvas.
     """)
 
-    tools = List(Instance(Tool), help="""
+    tools = List(Either(Instance(Tool), Instance(ToolProxy)), help="""
     A list of tools to add to the plot.
     """)
-
-class Toolbar(ToolbarBase):
-    ''' Collect tools to display for a single plot.
-
-    '''
 
     active_drag: tp.Union[Literal["auto"], Drag, None] = Either(Null, Auto, Instance(Drag), default="auto", help="""
     Specify a drag tool to be active when the plot is displayed.
@@ -314,19 +313,13 @@ class Toolbar(ToolbarBase):
     be deactivated (i.e. the multi-gesture tool will take precedence).
     """)
 
-class ProxyToolbar(ToolbarBase):
-    ''' A toolbar that allow to merge and proxy tools of toolbars in multiple
-    plots.
-
-    '''
-
 class ToolbarBox(LayoutDOM):
     ''' A layoutable toolbar that can accept the tools of multiple plots, and
     can merge the tools into a single button for convenience.
 
     '''
 
-    toolbar = Instance(ToolbarBase, help="""
+    toolbar = Instance(Toolbar, help="""
     A toolbar associated with a plot which holds all its tools.
     """)
 
