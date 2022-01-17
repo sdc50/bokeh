@@ -187,6 +187,11 @@ class MetaHasProps(type):
         if unused_overrides:
             warn(f"Overrides of {unused_overrides} in class {cls.__name__} does not override anything.", RuntimeWarning, stacklevel=2)
 
+    def is_unstable(cls, desc: PropertyDescriptor[Any]) -> bool:
+        # _may_have_unstable_default() doesn't have access to overrides, so check manually
+        return desc.property._may_have_unstable_default() or \
+                isinstance(cls.__overridden_defaults__.get(desc.name, None), types.FunctionType)
+
 class HasProps(metaclass=MetaHasProps):
     ''' Base class for all class types that have Bokeh properties.
 
@@ -210,6 +215,11 @@ class HasProps(metaclass=MetaHasProps):
 
         for name, value in properties.items():
             setattr(self, name, value)
+
+        for name in self.properties() - set(properties.keys()):
+            desc = self.lookup(name)
+            if self.__class__.is_unstable(desc):
+                desc._get(self) # this fills-in `_unstable_*_values`
 
         self._initialized = True
 
